@@ -49,12 +49,15 @@ type Pool struct {
 // provide a constructor function that creates new Worker types and when you
 // change the size of the pool the constructor will be called to create each new
 // Worker.
-func New(n int, ctor func() Worker) *Pool {
+func New(workers []Worker) *Pool {
 	p := &Pool{
-		ctor:    ctor,
+		workers: make([]*workerWrapper, 0, len(workers)),
 		reqChan: make(chan workRequest),
 	}
-	p.SetSize(n)
+	// Add extra workers if N > len(workers)
+	for i := 0; i < len(workers); i++ {
+		p.workers = append(p.workers, newWorkerWrapper(p.reqChan, workers[i]))
+	}
 
 	return p
 }
@@ -67,44 +70,14 @@ func (p *Pool) Process(payload interface{}) {
 
 	request.jobChan <- payload
 }
-func (p *Pool) SetSize(n int) {
-	p.workerMut.Lock()
-	defer p.workerMut.Unlock()
-
-	lWorkers := len(p.workers)
-	if lWorkers == n {
-		return
-	}
-
-	// Add extra workers if N > len(workers)
-	for i := lWorkers; i < n; i++ {
-		p.workers = append(p.workers, newWorkerWrapper(p.reqChan, p.ctor()))
-	}
-
-	// Asynchronously stop all workers > N
-	for i := n; i < lWorkers; i++ {
-		p.workers[i].stop()
-	}
-
-	// Synchronously wait for all workers > N to stop
-	for i := n; i < lWorkers; i++ {
-		p.workers[i].join()
-	}
-
-	// Remove stopped workers from slice
-	p.workers = p.workers[:n]
-}
-
-// GetSize returns the current size of the pool.
-func (p *Pool) GetSize() int {
-	p.workerMut.Lock()
-	defer p.workerMut.Unlock()
-
-	return len(p.workers)
-}
 
 // Close will terminate all workers and close the job channel of this Pool.
 func (p *Pool) Close() {
-	p.SetSize(0)
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].stop()
+	}
+	for i := 0; i < len(p.workers); i++ {
+		p.workers[i].join()
+	}
 	close(p.reqChan)
 }
