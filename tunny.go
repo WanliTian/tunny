@@ -31,7 +31,7 @@ var (
 )
 
 type Worker interface {
-	Process(interface{}) interface{}
+	Process(interface{})
 }
 
 // Pool is a struct that manages a collection of workers, each with their own
