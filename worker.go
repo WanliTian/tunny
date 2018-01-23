@@ -64,7 +64,7 @@ func newWorkerWrapper(
 }
 
 func (w *workerWrapper) run() {
-	jobChan := make(chan interface{})
+	jobChan := make(chan interface{}, 1)
 	defer func() {
 		close(w.closedChan)
 	}()

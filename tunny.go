@@ -52,7 +52,8 @@ type Pool struct {
 func New(workers []Worker) *Pool {
 	p := &Pool{
 		workers: make([]*workerWrapper, 0, len(workers)),
-		reqChan: make(chan workRequest),
+		//change queue length
+		reqChan: make(chan workRequest, len(workers)),
 	}
 	// Add extra workers if N > len(workers)
 	for i := 0; i < len(workers); i++ {
