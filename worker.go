@@ -74,9 +74,13 @@ func (w *workerWrapper) run() {
 		case w.reqChan <- workRequest{
 			jobChan: jobChan,
 		}:
-			payload := <-jobChan
-			//changed by wanlitian
-			w.worker.Process(payload)
+			select {
+			case payload := <-jobChan:
+				//changed by wanlitian
+				w.worker.Process(payload)
+			case <-w.closeChan:
+				return
+			}
 			//result := w.worker.Process(payload)
 			//select {
 			//case retChan <- result:
